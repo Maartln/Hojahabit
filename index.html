@@ -153,6 +153,10 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .card{display:flex;flex-direction:column;gap:6px;text-align:left;padding:14px;border-radius:14px;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;cursor:pointer}
 .card:hover{border-color:var(--ac,var(--w3))}
 .card .track{margin-top:4px}
+.who{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;overflow-y:auto}
+.who h1{font-size:1.5rem}
+.avs{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;border:3px solid var(--pc,var(--line));background:var(--panel)}
+#pf{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#12141a">
@@ -163,17 +167,19 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 <meta name="apple-mobile-web-app-title" content="Hábitos">
 </head>
 <body>
+<div id="who" class="who" hidden></div>
 <div id="bd" hidden></div>
 <aside id="dr" class="dr" role="dialog" aria-modal="true" aria-label="Opciones" hidden>
   <div class="drh"><b>Opciones</b><button class="btn" id="dx" aria-label="Cerrar menú">✕</button></div>
   <div class="dmenu" id="dm"></div>
+  <div id="pn-per" hidden></div>
   <div id="pn-dis"><div id="dz"></div></div>
   <div id="pn-tab" hidden></div>
   <div id="pn-dat" hidden></div>
 </aside>
 <div class="wrap">
   <header>
-    <div class="hl"><button class="btn burger" id="mo" aria-label="Abrir menú de opciones" aria-expanded="false" aria-controls="dr"><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><path d="M1 1h16M1 7h16M1 13h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div><h1 id="titulo">Rastreador de hábitos</h1><div class="mute" id="sub"></div></div></div>
+    <div class="hl"><button class="btn burger" id="mo" aria-label="Abrir menú de opciones" aria-expanded="false" aria-controls="dr"><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><path d="M1 1h16M1 7h16M1 13h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div><h1 id="titulo">Rastreador de hábitos</h1><div class="mute" id="sub"></div></div><button class="btn" id="pf" aria-label="Perfil"></button></div>
     <div class="mnav"><button class="btn" id="mp" aria-label="Mes anterior">‹</button><select id="mes" aria-label="Mes"></select><button class="btn" id="mn" aria-label="Mes siguiente">›</button></div>
   </header>
   <nav class="tabs" id="tabs" role="tablist" aria-label="Secciones"></nav>
@@ -231,7 +237,14 @@ const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','
 const DIAS=['d','l','m','m','j','v','s'];
 const MAXH=40, NOW=new Date(), Y=NOW.getFullYear(), NM=NOW.getMonth(), ND=NOW.getDate();
 let S=null;
-try{S=JSON.parse(localStorage.getItem('habitos-v1'))}catch(e){}
+let REG=null;
+try{REG=JSON.parse(localStorage.getItem('habitos-perfiles'))}catch(e){}
+if(!REG||!Array.isArray(REG.list)||!REG.list.length)REG={act:'p1',ask:0,list:[{id:'p1',n:'Perfil 1',e:'🙂',c:'#2dd4bf'}]};
+if(!REG.list.some(q=>q.id===REG.act))REG.act=REG.list[0].id;
+const keyOf=id=>id==='p1'?'habitos-v1':'habitos-p-'+id;
+let KEY=keyOf(REG.act);
+const saveReg=()=>{try{localStorage.setItem('habitos-perfiles',JSON.stringify(REG))}catch(e){}};
+try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 function fix(){
   if(!S||!Array.isArray(S.h))S={h:['Levantarme temprano','Meditar 10 minutos','Leer 10 páginas','Hacer ejercicio','Tomar 2 litros de agua'],c:{},m:NM};
   S.t=S.t||'Rastreador de hábitos';S.o=S.o||[];S.nt=S.nt||{};S.md=S.md||{};S.tab=S.tab||'dias';S.d=S.d||{};S.tb=S.tb||{};S.hp=S.hp||{};S.fs=S.fs||'p';S.cv=S.cv||'m';S.em=S.em||{m:[],tax:0,bal:[]};S.pg=S.pg||{};S.ex=S.ex||{r:[],l:{}};S.fn=S.fn||{m:[],b:0,cur:'$'};S.fn.fx=S.fn.fx||[];S.fn.goals=S.fn.goals||[];S.fn.debts=S.fn.debts||[];S.em.cx=S.em.cx||[];S.ex.bw=S.ex.bw||[];S.n=Math.min(MAXH,Math.max(S.n||15,1));S.g=S.g||{};S.c=S.c||{};S.theme=S.theme||'auto';
@@ -240,7 +253,7 @@ function fix(){
 }
 fix();
 let wsel='all',SD=ND,LM=-1;
-const save=()=>{try{localStorage.setItem('habitos-v1',JSON.stringify(S))}catch(e){}};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 const $=s=>document.querySelector(s);
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dimOf=m=>new Date(Y,m+1,0).getDate();
@@ -325,7 +338,7 @@ function look(){
   if(S.theme==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',S.theme);
   for(let i=0;i<4;i++){if(S.col&&S.col[i])r.style.setProperty('--w'+(i+1),S.col[i]);else r.style.removeProperty('--w'+(i+1))}
   $('#titulo').textContent=S.t;document.title=S.t;
-  const hr=NOW.getHours();$('#sub').textContent=(hr<12?'Buenos días':hr<20?'Buenas tardes':'Buenas noches')+' · '+NOW.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'});
+  const hr=NOW.getHours();$('#sub').textContent=(hr<12?'Buenos días':hr<20?'Buenas tardes':'Buenas noches')+(cur().n?', '+cur().n:'')+' · '+NOW.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'});
   $('#tt').value=S.t;$('#th').value=S.theme;
   const cs=getComputedStyle(r);
   $('#cols').innerHTML=[0,1,2,3].map(i=>'<input type="color" data-c="'+i+'" value="'+(S.col&&S.col[i]||cs.getPropertyValue('--w'+(i+1)).trim())+'" aria-label="Color de la semana '+(i+1)+'">').join('');
@@ -553,7 +566,7 @@ $('#v-fin').addEventListener('change',e=>{
 var TD={ini:['Inicio','#f472b6'],dias:['Días y rendimiento','#2dd4bf'],prog:['Programación','#60a5fa'],ej:['Ejercicio','#ff7a59'],fin:['Finanzas','#a3e635']};
 var TB=k=>S.tb[k]=S.tb[k]||{n:TD[k][0],c:TD[k][1]};
 var PN={ini:['Resumen de hoy','Dinero y vencimientos'],dias:['Hoy','Progreso del mes','Progreso diario','Tabla de hábitos','Progreso por hábito','Resumen semanal','Resumen del año','Objetivos'],prog:['Semana y día','Plan del día','Calendario del mes'],ej:['Rutina de hoy','Mis rutinas','Peso corporal','Descanso'],fin:['Balance del mes','Curva del balance','Nuevo movimiento','Movimientos del mes','En qué gastas','Calculadora','Gastos fijos','Metas de ahorro','Deudas y pagos'],emp:['Resultado del período','Curva de utilidad neta','Estado de resultados','Nuevo movimiento','Movimientos del período','Balance general','Indicadores','Cobros y pagos','Punto de equilibrio']};
-var FF={sora:'Sora,system-ui,sans-serif',sis:'system-ui,-apple-system,"Segoe UI",sans-serif',ser:'Georgia,"Times New Roman",serif',mon:'ui-monospace,Menlo,Consolas,monospace'},DEF={fs:100,cs:20,r:18,pad:18},SEC=[['dis','Diseño'],['tab','Pestañas'],['dat','Datos']];
+var FF={sora:'Sora,system-ui,sans-serif',sis:'system-ui,-apple-system,"Segoe UI",sans-serif',ser:'Georgia,"Times New Roman",serif',mon:'ui-monospace,Menlo,Consolas,monospace'},DEF={fs:100,cs:20,r:18,pad:18},SEC=[['per','Perfil'],['dis','Diseño'],['tab','Pestañas'],['dat','Datos']];
 var DS='dis';
 function hid(){const k=S.tab==='fin'?(S.fs==='e'?'emp':'fin'):S.tab,h=S.hp[k]||[];document.querySelectorAll('#v-'+S.tab+' .panel').forEach((p,i)=>{p.hidden=h.includes(i)})}
 ['ini','prog','ej','fin'].forEach(k=>new MutationObserver(hid).observe($('#v-'+k),{childList:true}));
@@ -575,7 +588,7 @@ function tpane(){
 function dmenu(){
   $('#dm').innerHTML=SEC.map(q=>'<button class="tab" data-sc="'+q[0]+'" aria-pressed="'+(DS===q[0])+'">'+q[1]+'</button>').join('');
   SEC.forEach(q=>{$('#pn-'+q[0]).hidden=DS!==q[0]});
-  if(DS==='dis')dpane();if(DS==='tab')tpane();
+  if(DS==='per')ppane();if(DS==='dis')dpane();if(DS==='tab')tpane();
 }
 function dopen(){$('#dr').hidden=false;$('#bd').hidden=false;$('#mo').setAttribute('aria-expanded','true');dmenu();$('#dx').focus()}
 function dclose(){$('#dr').hidden=true;$('#bd').hidden=true;$('#mo').setAttribute('aria-expanded','false');$('#mo').focus()}
@@ -587,22 +600,27 @@ $('#dr').addEventListener('input',e=>{
   else if(d.ds){S.d[d.ds]=+t.value;t.nextElementSibling.textContent=t.value+(d.ds==='fs'?'%':'px');dsg()}
   else if(d.tn){TB(d.tn).n=t.value||TD[d.tn][0];$('#tabs [data-tb="'+d.tn+'"]').textContent=TB(d.tn).n}
   else if(d.tc){TB(d.tc).c=t.value;if(S.tab===d.tc)document.documentElement.style.setProperty('--ac',t.value)}
+  else if(d.pf){cur()[d.pf]=d.pf==='h'?(+t.value||0):t.value;saveReg();hdr();return}
   else return;
   save();
 });
 $('#dr').addEventListener('change',e=>{
   const t=e.target,d=t.dataset;
+  if(t.id==='pask'){REG.ask=t.checked?1:0;saveReg();return}
   if(d.df!==undefined){S.d.ff=t.value;dsg()}
   else if(d.th){const p=d.th.split('|'),h=S.hp[p[0]]=S.hp[p[0]]||[],i=+p[1],ix=h.indexOf(i);if(t.checked){if(ix>=0)h.splice(ix,1)}else if(ix<0)h.push(i);hid()}
   else return;
   save();
 });
 $('#dr').addEventListener('click',e=>{
-  const t=e.target,x=t.closest('[data-sc]');
+  const t=e.target;let x=t.closest('[data-sc]');
   if(x){DS=x.dataset.sc;dmenu();return}
   if(t.id==='dx')dclose();
   else if(t.id==='dreset'){S.d={};delete S.col;save();look();dsg();dpane()}
   else if(t.id==='treset'){S.tb={};S.hp={};save();tabs();tpane()}
+  else if(x=t.closest('[data-pw]')){const q=REG.list.find(v=>v.id===x.dataset.pw);dclose();q.pin?pinq(q.id):swp(q.id)}
+  else if(t.id==='padd')padd();
+  else if(t.id==='pdel')pdel();
 });
 const A0=all;all=()=>{A0();dsg();tabs()};
 
@@ -757,7 +775,61 @@ $('#v-ej').addEventListener('click',e=>{
   else return;
   save();ej();
 });
-dsg();tabs();
+/* ===== perfiles ===== */
+function cur(){return REG.list.find(q=>q.id===REG.act)}
+function hdr(){const q=cur(),b=$('#pf');b.textContent=q.e+' '+q.n;b.style.borderColor=q.c}
+function ppane(){
+  const q=cur(),bw=S.ex.bw.slice().sort((a,b)=>a.f.localeCompare(b.f)),w=bw.length?bw[bw.length-1].w:0;
+  const age=q.b?Math.floor((T0-new Date(+q.b.slice(0,4),+q.b.slice(5,7)-1,+q.b.slice(8)))/31557600000):null,imc=w&&q.h?(w/Math.pow(q.h/100,2)).toFixed(1):null;
+  $('#pn-per').innerHTML='<h3>Tu perfil</h3>'
+  +'<label>Nombre<input type="text" data-pf="n" value="'+esc(q.n)+'" maxlength="30"></label>'
+  +'<label>Avatar (un emoji)<input type="text" data-pf="e" value="'+esc(q.e)+'" maxlength="4" style="max-width:70px;text-align:center;font-size:1.3rem"></label>'
+  +'<label>Color<input type="color" data-pf="c" value="'+q.c+'"></label>'
+  +'<label>Fecha de nacimiento<input type="date" data-pf="b" value="'+esc(q.b||'')+'"></label>'
+  +'<label>Estatura (cm)<input type="number" data-pf="h" min="0" max="260" value="'+(q.h||'')+'" style="max-width:100px"></label>'
+  +'<label>Objetivo personal<input type="text" data-pf="o" value="'+esc(q.o||'')+'" maxlength="80" placeholder="Qué quieres lograr"></label>'
+  +'<label>PIN (opcional)<input type="password" inputmode="numeric" data-pf="pin" value="'+esc(q.pin||'')+'" maxlength="6" style="max-width:110px" autocomplete="off"></label>'
+  +'<p class="mute">El PIN es un bloqueo simple para que otra persona no abra tu perfil por error. No cifra tus datos.</p>'
+  +'<div class="rw"><span>Edad</span><b>'+(age!==null?age+' años':'—')+'</b></div><div class="rw"><span>Peso actual</span><b>'+(w?w+' kg':'—')+'</b></div><div class="rw"><span>IMC (valor referencial)</span><b>'+(imc||'—')+'</b></div>'
+  +'<h3>Perfiles en este dispositivo</h3>'+REG.list.map(v=>'<div class="mv" style="grid-template-columns:auto minmax(0,1fr) auto"><span style="font-size:1.3rem">'+esc(v.e)+'</span><span>'+esc(v.n)+(v.id===REG.act?' <small class="mute">(activo)</small>':'')+(v.pin?' 🔒':'')+'</span>'+(v.id===REG.act?'':'<button class="btn" data-pw="'+v.id+'">Cambiar</button>')+'</div>').join('')
+  +'<div class="btns" style="margin-top:10px"><button class="btn" id="padd">Agregar perfil</button>'+(REG.list.length>1?'<button class="btn" id="pdel">Eliminar este perfil</button>':'')+'</div>'
+  +'<label style="margin-top:12px"><span>Preguntar quién usa la app al abrir</span><input type="checkbox" id="pask"'+(REG.ask?' checked':'')+'></label>'
+  +'<p class="mute">Cada perfil tiene sus propios hábitos, tareas, ejercicios y finanzas. Los datos personales y los perfiles se guardan solo en este dispositivo.</p>';
+}
+function swp(id,skip){
+  if(!skip)save();
+  REG.act=id;saveReg();KEY=keyOf(id);
+  try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}
+  fix();wsel='all';SD=ND;LM=-1;PD=new Date(T0);FD=new Date(Y,NM,1);ED=new Date(Y,NM,1);
+  all();hdr();
+}
+function padd(){const id='p'+uid();REG.list.push({id:id,n:'Perfil '+(REG.list.length+1),e:'🙂',c:'#60a5fa'});saveReg();swp(id);ppane()}
+function pdel(){
+  const b=$('#pdel');if(!b.dataset.ok){b.textContent='Toca otra vez: se borran sus datos';b.dataset.ok=1;return}
+  const id=REG.act;REG.list=REG.list.filter(q=>q.id!==id);
+  try{localStorage.removeItem(keyOf(id))}catch(e){}
+  saveReg();swp(REG.list[0].id,1);ppane();
+}
+function who(){
+  const w=$('#who');w.hidden=false;
+  w.innerHTML='<h1>¿Quién usa la app?</h1><div class="cards" style="width:min(560px,100%)">'+REG.list.map(q=>'<button class="card" data-wp="'+q.id+'" style="align-items:center;text-align:center"><span class="avs" style="--pc:'+q.c+'">'+esc(q.e)+'</span><b>'+esc(q.n)+(q.pin?' 🔒':'')+'</b></button>').join('')+'</div>';
+}
+function pinq(id,msg){
+  const q=REG.list.find(v=>v.id===id),w=$('#who');w.hidden=false;
+  w.innerHTML='<span class="avs" style="--pc:'+q.c+'">'+esc(q.e)+'</span><h1>'+esc(q.n)+'</h1><label class="mute" style="display:flex;gap:10px;align-items:center">PIN <input type="password" inputmode="numeric" id="pinin" maxlength="6" autocomplete="off" style="width:120px;text-align:center"></label><div class="mute" id="pinm" aria-live="polite">'+(msg||'')+'</div><div class="btns"><button class="btn" data-pin="'+id+'">Entrar</button>'+(REG.list.length>1?'<button class="btn" data-wback="1">Volver</button>':'')+'</div>';
+  $('#pinin').focus();
+}
+function enter(id){$('#who').hidden=true;if(id!==REG.act)swp(id)}
+$('#who').addEventListener('click',e=>{
+  const t=e.target,a=t.closest('[data-wp]'),b=t.closest('[data-pin]');
+  if(a){const q=REG.list.find(v=>v.id===a.dataset.wp);q.pin?pinq(q.id):enter(q.id)}
+  else if(b){const q=REG.list.find(v=>v.id===b.dataset.pin);if($('#pinin').value===q.pin)enter(q.id);else{$('#pinm').textContent='PIN incorrecto.';$('#pinin').value='';$('#pinin').focus()}}
+  else if(t.closest('[data-wback]'))who();
+});
+$('#who').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='pinin')document.querySelector('#who [data-pin]').click()});
+$('#pf').onclick=()=>{DS='per';dopen()};
+dsg();tabs();hdr();
+if(REG.ask&&REG.list.length>1)who();else if(cur().pin)pinq(REG.act);
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
 </body>
